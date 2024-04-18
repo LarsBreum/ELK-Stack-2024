@@ -1,0 +1,74 @@
+services:
+  elasticsearch:
+    image: elasticsearch:7.16.1
+    container_name: elastic
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9300:9300"
+      - "9200:9200"
+    expose:
+      - 9200
+      - 9300
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - elastic
+
+  logstash:
+    image: logstash:7.16.1
+    container_name: logstash
+    environment:
+      discovery.seed_hosts: logstash
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+      ELASTICSEARCH_URL: http://elastic:9200
+    volumes:
+      - ./logstash/logstash.conf:/usr/share/logstash/logstash.conf
+      - suricata:/var/log/suricata-logs
+    ports:
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "5044:5044"
+      - "9600:9600"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+    command: logstash -f /usr/share/logstash/logstash.conf
+
+  kibana:
+    image: kibana:7.16.1
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+      - logstash
+    networks:
+      - elastic
+
+  suricata:
+    image: jasonish/suricata:latest
+    container_name: suricata
+      #environment:
+      #- "net=host"
+    volumes:
+      - ./data/logs.pcap:/logs/logs.pcap
+      - suricata:/var/log/suricata-logs
+    command: -l /var/log/suricata-logs/ -v -r /logs --pcap-file-continuous
+    networks:
+      - elastic
+    depends_on:
+      - elasticsearch
+      - logstash
+volumes:
+  suricata:
+
+networks:
+  elastic:
+    driver: bridge
