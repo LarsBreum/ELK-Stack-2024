@@ -1,0 +1,12 @@
+FROM ubuntu:rolling
+
+RUN echo "Building image"
+WORKDIR /usr/src/app
+
+RUN apt update && apt install nmap -y && apt install net-tools
+
+# Open a port if needed (replace `80` with your port number)
+EXPOSE 80
+
+# Command to run when starting the container
+CMD ["bash"]
