@@ -55,17 +55,37 @@ services:
   suricata:
     image: jasonish/suricata:latest
     container_name: suricata
-      #environment:
-      #- "net=host"
+    environment:
+      - "net=host"
     volumes:
       - ./data/logs.pcap:/logs/logs.pcap
       - suricata:/var/log/suricata-logs
-    command: -l /var/log/suricata-logs/ -v -r /logs --pcap-file-continuous
+    command: -l /var/log/suricata-logs/ -v -i eth0
     networks:
       - elastic
     depends_on:
       - elasticsearch
       - logstash
+
+  enemy:
+    image: enemy:latest
+    container_name: enemy
+    command: tail -f /dev/null  # Keeps the container running
+    networks:
+      - elastic
+    depends_on:
+      - suricata
+
+  user:
+    image: lab-ubuntu:latest
+    container_name: user
+    command: tail -f /dev/null  # Keeps the container running
+    networks:
+      - elastic
+    depends_on:
+      - suricata
+
+  
 volumes:
   suricata:
 
